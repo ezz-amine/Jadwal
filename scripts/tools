@@ -1,0 +1,85 @@
+#!/bin/bash
+
+# Global variables
+MIGRATIONS_DIR="migrations"
+SQL_FILES_DIR="sql"
+DATABASE_PATH="$HOME/.local/share/.jadwal.db"
+DATABASE_URL="sqlite://$DATABASE_PATH?_journal_mode=WAL&_fk=1"
+DEV_URL="sqlite://:memory:"
+
+# Check if we're in a git repo and have sqlc.yml and go.mod
+_check_environment() {
+    if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+        echo "Error: Not inside a git repository"
+        return 1
+    fi
+
+    if [[ ! -f "sqlc.yml" || ! -f "go.mod" ]]; then
+        echo "Error: sqlc.yml or go.mod not found in current directory"
+        return 1
+    fi
+    
+    if ! command -v atlas >/dev/null 2>&1; then
+        echo "Error: 'atlas' command not found in PATH"
+        return 1
+    fi
+
+    # Create migrations directory if it doesn't exist
+    if [[ ! -d "$MIGRATIONS_DIR" ]]; then
+        mkdir -p "$MIGRATIONS_DIR"
+        echo "Created migrations directory: $MIGRATIONS_DIR"
+    fi
+
+    return 0
+}
+
+# Generate migrations
+generate_migrations() {
+    if ! _check_environment; then
+        return 1
+    fi
+
+    echo "Generating migrations..."
+    atlas migrate diff initial_schema \
+        --dir "file://$MIGRATIONS_DIR" \
+        --to "file://$SQL_FILES_DIR/schema.sql" \
+        --dev-url "$DEV_URL"
+}
+
+# Apply migrations
+apply_migrations() {
+    if ! _check_environment; then
+        return 1
+    fi
+
+    echo "Applying migrations..."
+    atlas migrate apply --url "$DATABASE_URL"
+}
+
+# Create empty migration
+empty_migration() {
+    if ! _check_environment; then
+        return 1
+    fi
+
+    if [[ -z "$1" ]]; then
+        echo "Usage: empty_migration <migration_name>"
+        return 1
+    fi
+
+    echo "Creating empty migration: $1"
+    atlas migrate new "$1" --dir "file://$MIGRATIONS_DIR"
+}
+
+# Deactivate/unload the functions
+deactivate_tools() {
+    unset MIGRATIONS_DIR DATABASE_PATH DATABASE_URL DEV_URL
+    unset -f _check_environment generate_migrations apply_migrations empty_migration deactivate_migration_helpers
+    echo "Migration helpers deactivated"
+}
+
+echo "Dev tools loaded. Available functions:"
+echo "  generate_migrations"
+echo "  apply_migrations"
+echo "  empty_migration <name>"
+echo "  deactivate_tools"

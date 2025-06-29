@@ -1,6 +1,3 @@
-/*
-Copyright © 2025 NAME HERE <EMAIL ADDRESS>
-*/
 package cmd
 
 import (
@@ -8,52 +5,59 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/ezz-amine/Jadwal/pkg/application"
 	"github.com/ezz-amine/Jadwal/pkg/core"
-	// "github.com/ezz-amine/Jadwal/pkg/sqlc"
+
 	"github.com/spf13/cobra"
 )
 
-// queries *sqlc.Queries = nil
-var title *string = nil
-
-// createTableCmd represents the createTable command
-var createTableCmd = &cobra.Command{
-	Use:   "createTable",
-	Short: "create a new 'Jadwal' for your todos",
-	Args: func(cmd *cobra.Command, args []string) error {
-		var err error = nil
-
-		if err := cobra.MinimumNArgs(1)(cmd, args); err != nil {
-			return err
-		}
-
-		ctx, cancel := context.WithTimeout(context.Background(), core.TIMEOUT)
-		defer cancel()
-
-		if queries == nil {
-			queries, err = core.GetQueries()
-			if err != nil {
-				return fmt.Errorf("database err: %w", err)
-			}
-		} else {
-			fmt.Println("lreadi\n")
-		}
-
-		tempArgs := strings.Join(args, " ")
-		title = &tempArgs
-		_, err = queries.GetTableByTitle(ctx, *title)
-		if err == nil {
-			return fmt.Errorf("table with title '%s' already exists", *title)
-		}
-
-		return nil
-	},
-	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println(*title)
-		queries.
-	},
+type CreateTableCommand struct {
+	application.Handler
 }
 
+func (c CreateTableCommand) Args(app application.Application, cmd *cobra.Command, args []string) error {
+	var err error = nil
+
+	if err = cobra.MinimumNArgs(1)(cmd, args); err != nil {
+		return err
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), core.TIMEOUT)
+	defer cancel()
+
+	title := strings.Join(args, " ")
+	_, err = app.Queries.GetTableByTitle(ctx, title)
+	if err == nil {
+		return fmt.Errorf("table titled '%s' already exists", title)
+	}
+
+	return nil
+}
+
+func (c CreateTableCommand) Run(app application.Application, cmd *cobra.Command, args []string) error {
+	title := strings.Join(args, " ")
+	fmt.Println(title)
+
+	ctx, cancel := context.WithTimeout(context.Background(), core.TIMEOUT)
+	defer cancel()
+
+	_, err := app.Queries.CreateTable(ctx, title)
+	if err != nil {
+		return fmt.Errorf("error occurred when creating table '%s': %w", title, err)
+	}
+
+	fmt.Printf("table titled '%s' created", title)
+	return nil
+}
+
+var createTableCmd = application.NewCommand(
+	CreateTableCommand{},
+	application.CommandDefinition{
+		Use:   "create",
+		Short: "create a new table:'Jadwal' for your todos",
+	},
+)
+
 func init() {
-	rootCmd.AddCommand(createTableCmd)
+	tableCmd.AddCommand(createTableCmd)
 }

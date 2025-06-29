@@ -58,7 +58,10 @@ func DisplayAllTables(termContext *core.TermContext, tablesLister core.TablesLis
 		return fmt.Errorf("can't display tables: %w", err)
 	}
 
-	for _, table := range tables {
+	for idx, table := range tables {
+		if idx > 0 {
+			fmt.Println("")
+		}
 		err = DisplayTable(termContext, tablesLister, table)
 		if err != nil {
 			return err
@@ -79,45 +82,14 @@ func DisplayTable(termContext *core.TermContext, entriesLister core.EntriesListe
 		return fmt.Errorf("can't get todos from '%s': %w", table.Title, err)
 	}
 
-	for idx, todo := range todos {
-		displayEntryAsLine(termContext, todo, idx)
+	if len(todos) > 0 {
+		for idx, todo := range todos {
+			displayEntryAsLine(termContext, todo, idx)
+		}
+	} else {
+		fmt.Printf(" - %-*s\n", termContext.UsedWidth-3, "empty table: no TODO to show")
 	}
 
 	fmt.Println(strings.Repeat("=", termContext.UsedWidth))
 	return nil
 }
-
-// func JadwalShow() {
-// if err != nil {
-// 	panic(err)
-// }
-
-// queries := sqlc.New(db)
-
-// // defaultTable, _ := queries.GetTodoTableByTitle(ctx, "Default")
-// // queries.CreateTodoEntry(ctx, sqlc.CreateTodoEntryParams{
-// // 	Content: "Somting todo",
-// // 	IsDone:  sql.NullBool{Bool: false},
-// // 	TableID: defaultTable.ID,
-// // })
-// todos, _ := queries.ListAllTodoEntries(ctx)
-// // if err != nil {
-// // 	panic(err)
-// // }
-
-// defer func() {
-// 	if err := recover(); err != nil {
-// 	}
-// }()
-
-// todos := []jadwal.Todo{}
-// todos = append(todos, jadwal.NewTodo("Some task"), jadwal.NewTodo("Some other taks"))
-// for idx, todo := range todos {
-// 	c := "-"
-// 	if todo.IsDone {
-// 		c = "x"
-// 	}
-
-// 	fmt.Printf("[%s] %s (%d)\n", c, todo.Content, idx)
-// }
-// }
